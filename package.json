@@ -1,0 +1,23 @@
+{
+  "name": "jira-weekly-report",
+  "version": "1.0.0",
+  "description": "Node.js app to fetch Jira issues and comments for weekly reporting",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "jira",
+    "reporting",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "date-fns": "^2.30.0"
+  }
+}
