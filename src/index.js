@@ -27,7 +27,7 @@ async function searchIssues() {
       project in (PF, UXDENG) AND 
       type = "Epic" AND
       affectedVersion = "Q3 2025" AND 
-      updated >= -3d
+      updated >= -4d
     `;
 
     const response = await jiraClient.get('/rest/api/2/search', {
@@ -78,7 +78,7 @@ async function fetchIssueComments(issueKey) {
  * Filter comments to only include those from the past 7 days
  */
 function filterRecentComments(comments) {
-  const threeDaysAgo = subDays(new Date(), 3);
+  const threeDaysAgo = subDays(new Date(), 6);
 
   return comments.filter((comment) => {
     const commentDate = parseISO(comment.created);
@@ -90,11 +90,16 @@ function filterRecentComments(comments) {
  * Format comment data for display
  */
 function formatComment(comment) {
+  const body = extractCommentText(comment.body);
+  // Extract author from comment if Github comment
+  const authorMatch = /Comment Author: (.*)\n/.exec(body);
+  const author = authorMatch ? authorMatch[1] : comment.author.displayName; 
+    
   return {
     id: comment.id,
-    author: comment.author.displayName,
+    author,
     created: comment.created,
-    body: extractCommentText(comment.body),
+    body,
     updated: comment.updated,
   };
 }
