@@ -195,11 +195,21 @@ async function generateWeeklyReport() {
     if (report.issues.length > 0) {
       // Also save the report as JSON
       const fs = await import('fs');
+      const path = await import('path');
+      
+      // Ensure generated-reports directory exists
+      const reportsDir = 'generated-reports';
+      if (!fs.existsSync(reportsDir)) {
+        fs.mkdirSync(reportsDir, { recursive: true });
+      }
+      
       const reportFileName = `jira-weekly-report-${
         new Date().toISOString().split('T')[0]
       }.json`;
-      fs.writeFileSync(reportFileName, JSON.stringify(report, null, 2));
-      console.log(`\n💾 Report saved as: ${reportFileName}`);
+      const reportPath = path.join(reportsDir, reportFileName);
+      
+      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+      console.log(`\n💾 Report saved as: ${reportPath}`);
     }
   } catch (error) {
     console.error('Error generating weekly report:', error.message);
