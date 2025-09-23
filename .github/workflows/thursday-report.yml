@@ -1,0 +1,56 @@
+name: Thursday Jira Weekly Report
+
+on:
+  schedule:
+    # Runs at 1:00 PM UTC every Thursday
+    # The cron string is 'minute hour day-of-month month day-of-week'
+    - cron: '0 13 * * 4'
+  # Allows you to manually trigger the workflow from the Actions tab
+  workflow_dispatch:
+    inputs:
+      affected_version:
+        description: 'Affected version to filter issues (e.g., "Q4 2025"). Leave blank to use current quarter automatically.'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  generate-jira-weekly-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Run GitHub-Jira sync
+      - name: Execute Jira Weekly Report
+        env:
+          JIRA_PAT: ${{ secrets.JIRA_PAT }}
+          AFFECTED_VERSION: ${{ inputs.affected_version }}
+        run: |
+          if [ -n "$AFFECTED_VERSION" ]; then
+            echo "Running report for affected version: $AFFECTED_VERSION"
+          else
+            echo "Running report with current quarter (auto-detected)"
+          fi
+          node src/index.js
+
+      # Step 5: Upload JSON report as artifact
+      - name: Upload report output as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jira-weekly-report
+          path: "jira-weekly-report-*.json"
+          retention-days: 3
