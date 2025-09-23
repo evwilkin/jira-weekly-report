@@ -8,9 +8,31 @@ const delay = (ms = 1000) => new Promise((resolve) => setTimeout(resolve, ms));
 // Load environment variables
 dotenv.config();
 
+/**
+ * Get current quarter and year in format "Q# YYYY"
+ */
+function getCurrentQuarter() {
+  const now = new Date();
+  const month = now.getMonth() + 1; // getMonth() returns 0-11, we want 1-12
+  const year = now.getFullYear();
+  
+  let quarter;
+  if (month >= 1 && month <= 3) {
+    quarter = 1;
+  } else if (month >= 4 && month <= 6) {
+    quarter = 2;
+  } else if (month >= 7 && month <= 9) {
+    quarter = 3;
+  } else {
+    quarter = 4;
+  }
+  
+  return `Q${quarter} ${year}`;
+}
+
 // Initialize Jira client
 const jiraClient = axios.create({
-  baseURL: process.env.JIRA_URL,
+  baseURL: 'https://issues.redhat.com/',
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -21,13 +43,13 @@ const jiraClient = axios.create({
 /**
  * Search for issues in specified projects with recent comments
  */
-async function searchIssues() {
+async function searchIssues(affectedVersion) {
   try {
     const jql = `
       project in (PF, UXDENG) AND 
       type = "Epic" AND
-      affectedVersion = "Q3 2025" AND 
-      updated >= -4d
+      affectedVersion = "${affectedVersion}" AND 
+      updated >= -6d
     `;
 
     const response = await jiraClient.get('/rest/api/2/search', {
@@ -123,7 +145,7 @@ async function generateIssueSummary(issue) {
   return {
     issueKey: issue.key,
     issueSummary: issue.fields.summary,
-    issueUrl: `${process.env.JIRA_URL}/browse/${issue.key}`,
+    issueUrl: `https://issues.redhat.com/browse/${issue.key}`,
     recentCommentsCount: recentComments.length,
     comments: formattedComments,
   };
@@ -134,17 +156,20 @@ async function generateIssueSummary(issue) {
  */
 async function generateWeeklyReport() {
   try {
+    // Get affected version from environment or use current quarter as default
+    const affectedVersion = process.env.AFFECTED_VERSION || getCurrentQuarter();
+    
     console.log(
-      '🔍 Searching for issues in PF and UXDENG projects with Q3 2025 affected version...'
+      `🔍 Searching for issues in PF and UXDENG projects with ${affectedVersion} affected version...`
     );
 
-    if (!process.env.JIRA_URL || !process.env.JIRA_PAT) {
+    if (!process.env.JIRA_PAT) {
       throw new Error(
-        'Missing required environment variables: JIRA_URL and JIRA_PAT'
+        'Missing required environment variable: JIRA_PAT'
       );
     }
 
-    const issues = await searchIssues();
+    const issues = await searchIssues(affectedVersion);
     console.log(`Found ${issues.length} issues with recent comments`);
 
     if (issues.length === 0) {
@@ -156,7 +181,7 @@ async function generateWeeklyReport() {
       generatedAt: new Date().toISOString(),
       searchCriteria: {
         projects: ['PF', 'UXDENG'],
-        affectedVersion: 'Q3 2025',
+        affectedVersion: affectedVersion,
         commentsPeriod: 'Last 7 days',
       },
       issues: [],
@@ -183,33 +208,26 @@ async function generateWeeklyReport() {
       console.log(`\n${index + 1}. ${issue.issueKey}: ${issue.issueSummary}`);
       console.log(`   URL: ${issue.issueUrl}`);
       console.log(`   Recent Comments: ${issue.recentCommentsCount}`);
-
+      /* Hide comments from logging
       issue.comments.forEach((comment, commentIndex) => {
         console.log(`   Comment ${commentIndex + 1}:`);
         console.log(`     Author: ${comment.author}`);
         console.log(`     Date: ${formatDate(comment.created)}`);
         console.log(`     Text: ${truncateText(comment.body, 150)}`);
       });
+      */
     });
 
     if (report.issues.length > 0) {
-      // Also save the report as JSON
+      // Save the report as JSON for GitHub Actions artifact
       const fs = await import('fs');
-      const path = await import('path');
-      
-      // Ensure generated-reports directory exists
-      const reportsDir = 'generated-reports';
-      if (!fs.existsSync(reportsDir)) {
-        fs.mkdirSync(reportsDir, { recursive: true });
-      }
       
       const reportFileName = `jira-weekly-report-${
         new Date().toISOString().split('T')[0]
       }.json`;
-      const reportPath = path.join(reportsDir, reportFileName);
       
-      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-      console.log(`\n💾 Report saved as: ${reportPath}`);
+      fs.writeFileSync(reportFileName, JSON.stringify(report, null, 2));
+      console.log(`\n💾 Report saved as: ${reportFileName}`);
     }
   } catch (error) {
     console.error('Error generating weekly report:', error.message);
