@@ -47,9 +47,8 @@ async function searchIssues(affectedVersion) {
   try {
     const jql = `
       project in (PF, UXDENG) AND 
-      type = "Epic" AND
       affectedVersion = "${affectedVersion}" AND 
-      updated >= -6d
+      updated >= -7d
     `;
 
     const response = await jiraClient.get('/rest/api/2/search', {
@@ -100,11 +99,11 @@ async function fetchIssueComments(issueKey) {
  * Filter comments to only include those from the past 7 days
  */
 function filterRecentComments(comments) {
-  const threeDaysAgo = subDays(new Date(), 6);
+  const sevenDaysAgo = subDays(new Date(), 7);
 
   return comments.filter((comment) => {
     const commentDate = parseISO(comment.created);
-    return isAfter(commentDate, threeDaysAgo);
+    return isAfter(commentDate, sevenDaysAgo);
   });
 }
 
