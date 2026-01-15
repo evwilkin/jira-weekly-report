@@ -46,7 +46,7 @@ const jiraClient = axios.create({
 async function searchIssues(affectedVersion) {
   try {
     const jql = `
-      project in (PF, UXDENG) AND 
+      project in (PF) AND 
       affectedVersion = "${affectedVersion}" AND 
       updated >= -7d
     `;
@@ -128,15 +128,18 @@ function formatComment(comment) {
 /**
  * Generate summary for an issue with its recent comments
  */
-async function generateIssueSummary(issue) {
-  console.log(`\nProcessing issue: ${issue.key} - ${issue.fields.summary}`);
+async function generateIssueSummary(issue, idx) {
+  console.log(`\n${idx}) Processing issue: ${issue.key} - ${issue.fields.summary}`);
 
   const allComments = await fetchIssueComments(issue.key);
   const recentComments = filterRecentComments(allComments);
-
-  if (recentComments.length === 0) {
-    console.log(`No recent comments found for ${issue.key}`);
+  const recentCommentsCount = recentComments.length;
+  
+  if (recentCommentsCount === 0) {
+    console.log(`    🔴 No recent comments found for ${issue.key}`);
     return null;
+  } else {
+    console.log(`    🟢 ${recentCommentsCount} recent comment${recentCommentsCount > 1 ? 's' : ''} found for ${issue.key}`);
   }
 
   const formattedComments = recentComments.map(formatComment);
@@ -145,7 +148,7 @@ async function generateIssueSummary(issue) {
     issueKey: issue.key,
     issueSummary: issue.fields.summary,
     issueUrl: `https://issues.redhat.com/browse/${issue.key}`,
-    recentCommentsCount: recentComments.length,
+    recentCommentsCount,
     comments: formattedComments,
   };
 }
@@ -159,7 +162,7 @@ async function generateWeeklyReport() {
     const affectedVersion = process.env.AFFECTED_VERSION || getCurrentQuarter();
     
     console.log(
-      `🔍 Searching for issues in PF and UXDENG projects with ${affectedVersion} affected version...`
+      `🔍 Searching for issues in PF project with ${affectedVersion} affected version...`
     );
 
     if (!process.env.JIRA_PAT) {
@@ -169,7 +172,7 @@ async function generateWeeklyReport() {
     }
 
     const issues = await searchIssues(affectedVersion);
-    console.log(`Found ${issues.length} issues with recent comments`);
+    console.log(`  - Found ${issues.length} issues for ${affectedVersion}`);
 
     if (issues.length === 0) {
       console.log('No issues found matching the criteria.');
@@ -179,7 +182,7 @@ async function generateWeeklyReport() {
     const report = {
       generatedAt: new Date().toISOString(),
       searchCriteria: {
-        projects: ['PF', 'UXDENG'],
+        projects: ['PF'],
         affectedVersion: affectedVersion,
         commentsPeriod: 'Last 7 days',
       },
@@ -187,8 +190,10 @@ async function generateWeeklyReport() {
     };
 
     // Process each issue and fetch its recent comments
+    let idx = 0;
     for (const issue of issues) {
-      const issueSummary = await generateIssueSummary(issue);
+      idx++;
+      const issueSummary = await generateIssueSummary(issue, idx);
       if (issueSummary) {
         report.issues.push(issueSummary);
       }
