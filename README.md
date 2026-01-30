@@ -4,7 +4,7 @@ A Node.js application that generates weekly reports from Jira by fetching issues
 
 ## Features
 
-- Fetches issues from **PF** and **UXDENG** projects
+- Fetches issues from **PF** project
 - Automatically detects current quarter and year for filtering (e.g., **"Q4 2025"**)
 - Supports custom affected version specification via environment variable or GitHub Action input
 - Identifies issues with comments added in the past 7 days
@@ -15,7 +15,7 @@ A Node.js application that generates weekly reports from Jira by fetching issues
 
 - Node.js (version 18 or higher)
 - Jira Personal Access Token (PAT)
-- Access to Red Hat Jira instance (https://issues.redhat.com) with PF and UXDENG projects
+- Access to Red Hat Jira instance (https://issues.redhat.com) with PF project
 
 ## Setup
 
@@ -95,13 +95,13 @@ The application will:
 ## Example Output
 
 ```
-🔍 Searching for issues in PF and UXDENG projects with Q4 2025 affected version...
+🔍 Searching for issues in PF project with Q4 2025 affected version...
 Found 3 issues with recent comments
 
 📊 WEEKLY JIRA REPORT
 ====================
 Generated at: 2024-01-15T10:30:00.000Z
-Projects: PF, UXDENG
+Project: PF
 Affected Version: Q4 2025
 Comments Period: Last 7 days
 
@@ -115,8 +115,8 @@ Found 3 issues with recent comments:
      Date: 1/14/2024
      Text: Updated the CSS to fix the alignment issue...
 
-2. UXDENG-5678: Update design tokens
-   URL: https://issues.redhat.com/browse/UXDENG-5678
+2. PF-5678: Update design tokens
+   URL: https://issues.redhat.com/browse/PF-5678
    Recent Comments: 1
    Comment 1:
      Author: Jane Smith
@@ -130,7 +130,7 @@ Found 3 issues with recent comments:
 
 The application dynamically generates its JQL query based on the current quarter and year (or specified affected version):
 ```jql
-project in (PF, UXDENG) AND 
+project in (PF) AND 
 type = "Epic" AND
 affectedVersion = "[Current Quarter YYYY]" AND 
 updated >= -4d
